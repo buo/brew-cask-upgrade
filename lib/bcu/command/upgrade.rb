@@ -9,6 +9,7 @@ module Bcu
         ohai "Options"
         puts_stdout_or_stderr "Include auto-update (-a): #{Formatter.colorize(options.all, options.all ? "green" : "red")}"
         puts_stdout_or_stderr "Include latest (-f): #{Formatter.colorize(options.force, options.force ? "green" : "red")}"
+        puts_stdout_or_stderr "Include mac app store (--include-mas): #{Formatter.colorize(options.include_mas, options.include_mas ? "green" : "red")}" if options.include_mas
       end
 
       unless options.no_brew_update
@@ -17,6 +18,9 @@ module Bcu
       end
 
       installed = Cask.installed_apps
+      if options.include_mas
+        include_mas_applications installed
+      end
 
       ohai "Finding outdated apps"
       outdated, state_info = find_outdated_apps(installed, options)
@@ -56,6 +60,29 @@ module Bcu
     end
 
     private
+
+    def self.include_mas_applications(installed)
+      result = IO.popen(%w(mas list)).read
+      mac_apps = result.split("\n")
+
+      mac_apps.each do |app|
+        data = app.split(/^(\d+) (.+) \((.+)\)$/)
+        mas_cask = {
+          :cask         => nil,
+          :name         => data[2],
+          :token        => data[2].downcase,
+          :version      => data[3],
+          :current      => [data[3]],
+          :outdated?    => false,
+          :auto_updates => true,
+          :mas          => true,
+          :mas_id       => data[1],
+        }
+        installed.push(mas_cask)
+      end
+
+      installed.sort_by! { |cask| cask[:token] }
+    end
 
     def upgrade(app, options, state_info)
       if options.interactive

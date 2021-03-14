@@ -9,7 +9,7 @@ module Bcu
 
   def self.parse!(args)
     options_struct = Struct.new(:all, :force, :casks, :cleanup, :force_yes, :no_brew_update, :quiet, :verbose,
-                                :install_options, :list_pinned, :pin, :unpin, :interactive, :command)
+                                :install_options, :list_pinned, :pin, :unpin, :interactive, :command, :include_mas)
     options = options_struct.new
     options.all = false
     options.force = false
@@ -25,6 +25,7 @@ module Bcu
     options.unpin = nil
     options.interactive = false
     options.command = "run"
+    options.include_mas = false
 
     parser = OptionParser.new do |opts|
       opts.banner = "Usage: brew cu [CASK] [options]"
@@ -98,6 +99,14 @@ module Bcu
         onoe "Using option --unpin for unpinning is deprecated, please use \"brew cu unpin\" command."
         options.unpin = cask
         options.command = "unpin"
+      end
+
+      opts.on("--include-mas", "Include Mac AppStore applications") do
+        if IO.popen(%w(which mas)).read.empty?
+          onoe "In order to use --include-mas the mas-cli has to be installed. Please see the instructions here: https://github.com/mas-cli/mas"
+          exit 1
+        end
+        options.include_mas = true
       end
     end
 
